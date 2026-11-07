@@ -1,0 +1,96 @@
+### Variables (VS Code "REST Client" o IntelliJ HTTP Client)
+@host = http://localhost:8080
+
+### 0. Salud
+GET {{host}}/api/salud
+
+### 1. Carga INICIAL del reporte BUK (no hay version anterior: calcula todo)
+POST {{host}}/api/carga/buk
+Content-Type: multipart/form-data; boundary=X
+
+--X
+Content-Disposition: form-data; name="archivo"; filename="1_Base_contratos_inicial.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./samples/1_Base_contratos_inicial.xlsx
+--X--
+
+### 2. Resumen nacional por instituto
+GET {{host}}/api/resumen?agruparPor=it
+
+### 3. Resumen por mes, solo Santiago (IT 131)
+GET {{host}}/api/resumen?agruparPor=mes&it=131
+
+### 4. Resumen por cargo en un instituto y mes
+GET {{host}}/api/resumen?agruparPor=cargo&it=131&mes=5
+
+### 5. Totales nacionales y desglose mensual
+GET {{host}}/api/resumen/nacional
+
+### 6. Detalle de un profesional
+GET {{host}}/api/resumen/profesional/71146
+
+### 7. Segundo reporte CON cambios (jornada, cargo, alta, baja, 2 filas con error)
+POST {{host}}/api/carga/buk
+Content-Type: multipart/form-data; boundary=X
+
+--X
+Content-Disposition: form-data; name="archivo"; filename="2_Base_contratos_con_cambios.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./samples/2_Base_contratos_con_cambios.xlsx
+--X--
+
+### 8. Estado / log del bot
+GET {{host}}/api/carga/estado
+
+### 9. Errores detectados en el reporte
+GET {{host}}/api/carga/errores
+
+### 10. Cambios detectados (todos / solo bajas / de un profesional)
+GET {{host}}/api/cambios
+###
+GET {{host}}/api/cambios?tipo=BAJA
+###
+GET {{host}}/api/cambios?personaId=71146
+
+### 11. Parametros: ver distribucion de un cargo
+GET {{host}}/api/parametros/cargos?q=MEDICO FISIATRA
+
+### 12. Parametros: cambiar % de un cargo y recalcular (cada tramo debe sumar 1.0)
+PUT {{host}}/api/parametros/cargos/MEDICO FISIATRA?recalcular=true
+Content-Type: application/json
+
+{ "t40Dir": 0.60, "t40Ind": 0.15, "t40Nas": 0.25 }
+
+### 13. Parametros: cambiar la meta de gestion a 85% y recalcular
+PUT {{host}}/api/parametros/generales/meta_gestion?recalcular=true
+Content-Type: application/json
+
+{ "valor": 0.85 }
+
+### 14. Calendario: semanas habiles de mayo solo para Arica (IT 11), y recalcular
+PUT {{host}}/api/parametros/calendario/instituto/11/5?recalcular=true
+Content-Type: application/json
+
+{ "semanasHabiles": 3.6 }
+
+### 15. Catalogo de asignaciones especiales
+GET {{host}}/api/parametros/asignaciones
+
+### 16. Pedir una asignacion (queda aprobada o pendiente de autorizacion segun el catalogo)
+POST {{host}}/api/asignaciones
+Content-Type: application/json
+
+{ "personaId": 137732, "nombre": "Tutor docente", "solicitadoPor": "Jefatura Arica", "justificacion": "Docencia 2026" }
+
+### 17. Aprobar una asignacion pendiente
+POST {{host}}/api/asignaciones/1/aprobar
+
+### 18. Forzar recalculo total / aplicar pendientes
+POST {{host}}/api/calculo/recalcular
+###
+POST {{host}}/api/calculo/pendientes
+
+### 19. Institutos disponibles
+GET {{host}}/api/institutos

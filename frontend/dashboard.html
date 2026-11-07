@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cada Hora Cuenta | Dashboard Teletón</title>
   <link rel="icon" href="assets/logo-teleton.png">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
@@ -16,41 +15,30 @@
       <nav class="menu" id="menu" aria-label="Menú principal">
         <button data-view="resumen" class="active" type="button"><span>▦</span><b>Resumen general</b></button>
         <button data-view="profesionales" type="button"><span>♙</span><b>Profesionales</b></button>
-        <button data-view="sic" type="button"><span>▥</span><b>Comparación SIC</b></button>
-        <button data-view="parametros" data-central type="button"><span>⚙</span><b>Parámetros</b></button>
-        <button data-view="historial" data-central type="button"><span>◷</span><b>Historial</b></button>
+        <button data-view="historial" type="button"><span>◷</span><b>Cargas</b></button>
       </nav>
-      <div class="aside-bottom"><b>● Entorno de demostración</b><p>La conexión con Blue Prism y los datos oficiales se incorporará después.</p></div>
+      <div class="aside-bottom"><b>● Datos desde backend</b><p>Resumen y detalle consultados desde la base de datos.</p></div>
     </aside>
     <div class="workspace">
       <header class="topbar"><div class="crumb"><b>Planificación asistencial</b> / <span id="breadcrumb">Resumen general</span></div><div class="user"><span class="pill">DEMO</span><div class="avatar" id="avatar">P</div><div class="user-info"><b id="username">Usuario</b><small id="role-name">Planificación central</small></div><button class="logout" id="logout" type="button">Salir</button></div></header>
       <main class="main">
-        <div class="heading"><div><div class="eyebrow">GESTIÓN ASISTENCIAL · 2026</div><h1 id="title">Resumen nacional</h1><p id="subtitle">Visualiza la cobertura y el cumplimiento de la planificación.</p></div><button id="simulate" class="btn" type="button" data-central>↻ Simular actualización BUK</button></div>
-        <div class="notice">ⓘ <b>Datos ficticios:</b> las cantidades, profesionales y atenciones son de demostración; todavía no están conectadas a Blue Prism ni validadas con los Excel oficiales.</div>
-        <div class="filters"><label>Instituto<select id="instituto"><option value="">Todos los institutos</option></select></label><label>Área<select id="area"><option value="">Todas las áreas</option></select></label><label>Período<select id="mes"><option value="all">Año completo</option></select></label><label>Buscar<input id="buscar" type="search" placeholder="Código o profesional"></label><button class="btn secondary" id="limpiar" type="button">Limpiar</button></div>
+        <div class="heading"><div><div class="eyebrow">GESTIÓN ASISTENCIAL · BASE DE DATOS</div><h1 id="title">Resumen nacional</h1><p id="subtitle">Indicadores calculados desde los reportes cargados.</p></div><div class="upload"><input id="excel-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button id="refresh" class="btn secondary" type="button">↻ Actualizar</button><button id="cargar-excel" class="btn" type="button" data-central>↑ Cargar Excel BUK</button></div></div>
+        <div class="notice" id="api-status" role="status" aria-live="polite">Conectando con el backend…</div>
+        <div class="filters"><label>Instituto<select id="instituto"><option value="">Todos los institutos</option></select></label><label>Sub-área<select id="area"><option value="">Todas las sub-áreas</option></select></label><label>Período<select id="mes"><option value="all">Año completo</option></select></label><label>Persona ID<input id="buscar" type="search" inputmode="numeric" placeholder="Buscar por ID"></label><button class="btn secondary" id="limpiar" type="button">Limpiar</button></div>
 
         <section class="view active" id="resumen">
           <div class="cards" id="cards"></div>
-          <div class="overview">
-            <div class="hero"><label>● COBERTURA NACIONAL</label><h2 id="hero-title">La atención comienza con una buena planificación.</h2><p id="hero-description">Explora los institutos y consulta la planificación asistencial de cada sede.</p><div id="hero-stats" class="hero-stats"></div></div>
-            <div class="panel"><div class="panel-head"><div><div class="kicker">MAPA DE CHILE</div><h2>Institutos y sedes</h2><p>Selecciona un punto del mapa o un lugar de la lista.</p></div><span class="badge">17 lugares de referencia</span></div><div class="map-layout"><div id="map" class="map" aria-label="Mapa interactivo de ciudades con institutos Teletón"></div><div class="map-list" id="map-list"></div></div><div class="map-note">Los marcadores señalan ciudades aproximadas, no direcciones exactas de los institutos. Mapa: OpenStreetMap.</div></div>
-          </div>
-          <div class="two-columns"><article class="panel"><div class="panel-head"><div><div class="kicker">EVOLUCIÓN</div><h2>Atenciones por mes</h2><p>Planificadas vs. realizadas (simulación SIC)</p></div><div class="legend"><span><i></i> Planificadas</span><span><i class="real"></i> Realizadas</span></div></div><div class="chart" id="chart"></div></article><article class="panel"><div class="panel-head"><div><div class="kicker">HORAS</div><h2>Uso de la jornada</h2><p>Distribución asistencial</p></div></div><div class="distribution" id="distribution"></div></article></div>
-          <article class="panel"><div class="panel-head"><div><div class="kicker">DETALLE</div><h2 id="table-title">Planificación por instituto</h2><p>Selecciona un lugar para consultar sus profesionales.</p></div><button id="show-people" class="btn secondary" type="button">Ver profesionales →</button></div><div class="table-scroll"><table class="data-table"><thead id="summary-head"></thead><tbody id="summary-body"></tbody></table></div></article>
+          <div class="two-columns"><article class="panel"><div class="panel-head"><div><div class="kicker">EVOLUCIÓN</div><h2>Atenciones planificadas por mes</h2><p>Proyección calculada desde la dotación cargada</p></div></div><div class="chart" id="chart"></div></article><article class="panel"><div class="panel-head"><div><div class="kicker">JORNADA</div><h2>Uso de horas</h2><p>Proporción directa y horas contratadas</p></div></div><div class="distribution" id="distribution"></div></article></div>
+          <article class="panel"><div class="panel-head"><div><div class="kicker">DETALLE</div><h2>Planificación por instituto</h2><p>Agregados del cálculo guardado en la base de datos.</p></div><button id="show-people" class="btn secondary" type="button">Ver profesionales →</button></div><div class="table-scroll"><table class="data-table"><thead id="summary-head"></thead><tbody id="summary-body"></tbody></table></div></article>
         </section>
 
-        <section class="view" id="profesionales"><p class="section-info">Detalle de profesionales del instituto y período seleccionados.</p><article class="panel"><div class="panel-head"><div><div class="kicker">DOTACIÓN ASISTENCIAL</div><h2>Profesionales y planificación</h2></div><button id="exportar" class="btn secondary" type="button">↓ Exportar CSV</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Profesional</th><th>Instituto</th><th>Área</th><th class="num">Horas</th><th class="num">Planificadas</th><th class="num">Realizadas</th><th class="num">Cumplimiento</th></tr></thead><tbody id="people-body"></tbody></table></div></article></section>
-        <section class="view" id="sic"><div class="cards" id="sic-cards"></div><article class="panel"><div class="panel-head"><div><div class="kicker">COMPARACIÓN SIC</div><h2>Metas vs. atenciones realizadas</h2></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Profesional</th><th>Instituto</th><th>Área</th><th class="num">Meta</th><th class="num">Realizadas</th><th class="num">Cumplimiento</th></tr></thead><tbody id="sic-body"></tbody></table></div></article></section>
-        <section class="view" id="parametros"><article class="panel"><div class="panel-head"><div><div class="kicker">PLANIFICACIÓN CENTRAL</div><h2>Parámetros editables (demostración)</h2><p>Los valores oficiales por cargo y tramo se incorporarán después.</p></div></div><form id="params-form"><div class="params" id="params-fields"></div><div class="param-actions"><button class="btn" type="submit">Guardar y recalcular</button><button class="btn secondary" id="restaurar" type="button">Restaurar demo</button><span id="params-error" style="color:#b51c38;font-size:12px"></span></div></form></article></section>
-        <section class="view" id="historial"><article class="panel"><div class="panel-head"><div><div class="kicker">TRAZABILIDAD</div><h2>Historial de cambios de esta demostración</h2></div></div><div id="history" class="history"></div></article></section>
-        <div class="footer">Cada Hora Cuenta · Botathon 2026 · Proyecto de demostración</div>
+        <section class="view" id="profesionales"><p class="section-info">Detalle de filas calculadas; el Excel fuente no incluye nombres de profesionales ni atenciones realizadas.</p><article class="panel"><div class="panel-head"><div><div class="kicker">DOTACIÓN ASISTENCIAL</div><h2>Profesionales y planificación</h2></div><button id="exportar" class="btn secondary" type="button">↓ Exportar CSV</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Persona ID</th><th>Período</th><th>Ciudad</th><th>Instituto</th><th>Sub-área</th><th>Cargo</th><th class="num">Horas</th><th class="num">Plan directo</th><th class="num">Plan indirecto</th><th class="num">Plan total</th><th class="num">Meta</th><th class="num">FOJA</th></tr></thead><tbody id="people-body"></tbody></table></div></article></section>
+        <section class="view" id="historial"><article class="panel"><div class="panel-head"><div><div class="kicker">TRAZABILIDAD</div><h2>Historial de cargas</h2></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Estado</th><th>Filas válidas</th><th>Errores</th><th>Cambios</th><th>Detalle</th></tr></thead><tbody id="history"></tbody></table></div></article></section>
+        <div class="footer">La comparación SIC, los nombres y los permisos por instituto aún no están integrados; verifica la autorización antes de usar datos reales.</div>
       </main>
     </div>
   </div>
 
-  <!-- Se mantienen tus archivos existentes de datos y cálculos. -->
-  <script src="js/mock-data.js"></script>
   <script src="js/data-service.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/dashboard.js"></script>
 </html>

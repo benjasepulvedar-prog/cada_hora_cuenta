@@ -1,12 +1,8 @@
 # Planificacion asistencial - Backend (Botathon 2026 "Cada hora cuenta")
 
-Backend Spring Boot 3 / Java 17+ para correr **en local** sin Blue Prism ni SQL Server.
-Usa H2 persistida en disco por defecto y un **simulador del bot** que hace lo mismo que hara el proceso de Blue Prism
-(leer el Excel de BUK, validar, comparar con la version anterior y cargar solo lo que cambio).
-
-> Estado: el codigo pasa una revision de sintaxis y la formula de calculo fue probada contra una fila
-> del Excel de referencia, pero **el proyecto completo no se compilo ni se ejecuto** en el entorno donde se
-> genero (sin Maven ni acceso a internet). Si Maven falla al compilar, copia el error y se corrige.
+Backend Spring Boot 3 / Java 17+ configurado para utilizar Blue Prism por defecto. Por defecto utiliza H2
+persistida en disco; con el perfil `neon` utiliza PostgreSQL/Neon. El modo `SIMULADO` se reserva para pruebas o
+ejecuciones explícitas sin Blue Prism.
 
 ## Requisitos
 - JDK 17 o superior (`java -version`)
@@ -15,15 +11,15 @@ Usa H2 persistida en disco por defecto y un **simulador del bot** que hace lo mi
 ## Ejecutar
 ```bash
 mvn spring-boot:run        # arranca en http://localhost:8080
-mvn test                   # prueba de la formula (caso Fisiatra 40 h del Excel)
+mvn test                   # pruebas unitarias y de integración
 ```
 - Swagger UI (probar endpoints desde el navegador): http://localhost:8080/swagger-ui.html
 - Consola H2: http://localhost:8080/h2-console (JDBC `jdbc:h2:file:./data/planificacion`, user `sa`, sin clave)
 - La URL y credenciales se pueden reemplazar con `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
 
-### Usar Neon desde PowerShell
+### Base de datos Neon desde PowerShell
 
-El perfil `neon` selecciona PostgreSQL, inicializa el esquema y carga los parametros de referencia. No guardes
+El perfil `neon` selecciona PostgreSQL, crea las tablas que falten y carga los parámetros de referencia. No guarda
 la clave en `application.yml`, en Git ni dentro de la URL. En PowerShell, reemplaza el host por el endpoint de Neon
 y ejecuta:
 
@@ -39,8 +35,19 @@ $env:DB_PASSWORD = $credential.GetNetworkCredential().Password
 `Get-Credential` solicita la clave de forma oculta. Estas variables solo aplican a esa ventana de PowerShell; al cerrar
 la ventana desaparecen. La consola H2 se desactiva en el perfil Neon.
 
+El esquema y los parámetros iniciales se aplican al arrancar desde `schema-postgresql.sql` y `data-postgresql.sql`.
+Esto crea las tablas faltantes; no importa automáticamente el reporte de dotación. Sube el archivo desde el dashboard
+después de iniciar. Los datos iniciales usan `ON CONFLICT DO NOTHING`, así que no sustituyen parámetros ya editados.
+`CREATE TABLE IF NOT EXISTS` no migra tablas antiguas si cambia el esquema; para futuras versiones debe añadirse
+Flyway u otra estrategia de migraciones.
+
 El frontend está en `../frontend/`. Inicia el backend en el puerto 8080 y abre `login.html`; el dashboard consulta
-`http://localhost:8080/api` y permite subir reportes `.xlsx` desde la misma interfaz.
+`http://localhost:8080/api`, permite subir reportes `.xlsx`, consultar el resumen/detalle y descargar el CSV generado
+por el backend desde la base de datos. El CSV contiene IDs, no nombres: la planilla de contratos no trae nombres.
+Las atenciones realizadas/SIC no se muestran como datos reales porque no hay una API ni fuente SIC integrada.
+
+Para pruebas locales sin una instalación Blue Prism, configura explícitamente `$env:APP_BOT_MODO='SIMULADO'`
+en PowerShell antes de iniciar. No se aplica como fallback automático.
 
 Al arrancar se cargan los parametros del Excel (`data.sql`): 92 cargos con su distribucion por tramo,
 factores de atencion grupal, semanas habiles por mes, meta de gestion 90% y catalogo de asignaciones.
@@ -77,6 +84,8 @@ curl "http://localhost:8080/api/resumen?agruparPor=it"
 | GET | /api/resumen?agruparPor=&it=&mes=&area=&cargo=&codEsp=&personaId= | Dashboard. agruparPor: it, instituto, area, cargo, codEsp, mes, profesional |
 | GET | /api/resumen/nacional | Totales nacionales y por mes |
 | GET | /api/resumen/profesional/{personaId} | Detalle mensual de un profesional |
+| GET | /api/resumen/detalle?it=&mes=&area=&personaId= | Filas planificadas para la vista de profesionales |
+| GET | /api/resumen/exportar.csv?it=&mes=&area=&personaId= | CSV filtrado generado desde la BD |
 | GET/PUT | /api/parametros/cargos[/{cargo}] | % directo / indirecto / NAS por tramo y minutos estandar |
 | GET/PUT | /api/parametros/generales[/{clave}] | Meta de gestion, minutos indirecta, maximo de asignaciones |
 | GET/PUT | /api/parametros/calendario[/{mes}] y /instituto/{it}/{mes} | Semanas habiles nacionales y por instituto |
@@ -99,24 +108,27 @@ Contraste con la hoja `Dotacion_Asistencial` (471 profesionales): la atencion se
 El resto difiere por detalles que este MVP aun no modela: licencias, vacaciones y permisos (semanas descontadas),
 excepciones manuales del Excel, "Cambio % atencion grupal" aprobado y horas de colacion/pausa saludable.
 
-## Pasar de simulador a Blue Prism
-En `application.yml`:
+## Blue Prism
+El modo predeterminado es `BLUEPRISM`. Configura `BLUEPRISM_AUTOMATE_EXE`, `BLUEPRISM_PROCESO` y
+`BLUEPRISM_INPUT_DIR` si las rutas difieren de los valores por defecto. Si no encuentra `AutomateC.exe`, la carga
+responde `ERROR_BLUE_PRISM_NO_INSTALADO`; no procesa el Excel con Java como alternativa silenciosa.
+
+El backend entrega el archivo al proceso externo con:
 ```yaml
 app.bot.modo: BLUEPRISM
 ```
-- El backend deja el archivo en `app.bot.carpeta-entrada` y lanza `AutomateC.exe /run "<proceso>" /startp ...`
-  (ver `BluePrismBotService`).
-- El bot debe escribir en las tablas `contratos`, `cambios_detectados`, `errores_carga` y `log_ejecucion`
-  (ver `schema.sql`). `RecalculoScheduler` aplica los cambios PENDIENTES cada 15 s.
-- La H2 local está pensada para desarrollo y no para acceso concurrente desde un proceso externo: configura SQL Server / PostgreSQL para Blue Prism.
-  Las sentencias `MERGE ... KEY(...)` son sintaxis de H2 y hay que adaptarlas a ese motor.
+- El backend deja el `.xlsx` en `app.bot.carpeta-entrada` y lanza `AutomateC.exe` (ver `BluePrismBotService`).
+- El proceso Blue Prism debe existir, estar instalado y configurado para conectarse a Neon, leer el Excel y escribir
+  las tablas `contratos`, `cambios_detectados`, `errores_carga` y `log_ejecucion`. Ese proceso externo no forma parte
+  de este repositorio; aquí solo se invoca y se consulta su resultado.
+- El perfil Neon usa upserts PostgreSQL; el perfil H2 conserva las sentencias propias de H2.
 - La logica de `CargaService` (validaciones, llave `PersonaId|IT|Periodo`, tipos de cambio, BAJA = ya no aparece
   en el reporte, rige desde el ultimo mes del archivo) es la especificacion de lo que debe hacer el proceso de Blue Prism.
 
-## Fuera de alcance de este MVP
-Autenticacion y roles (hay que agregarlos antes de usar datos reales: el reporte contiene datos personales; este
-proyecto no guarda la fecha de nacimiento), comparacion contra SIC, aprobaciones con historial de versiones,
-licencias/vacaciones/permisos, feriados regionales precargados (se pueden cargar con el endpoint de calendario) y el frontend.
+## Pendiente antes de producción
+Autenticación y autorización reales (el login actual es solo del frontend y los endpoints no protegen por rol),
+comparación con SIC, nombres de profesionales, aprobaciones con historial de versiones, licencias/vacaciones/permisos
+y feriados regionales precargados. La fecha de nacimiento del Excel se ignora y no se almacena.
 
 ## Estructura
 ```
@@ -128,7 +140,7 @@ src/main/java/cl/teleton/planificacion/
   bot/         Integracion de simulacion local o Blue Prism
   calculo/     Formula pura de calculo y scheduler
   config/      Configuracion de la aplicacion
-src/main/resources/ application.yml, schema.sql, data.sql (parametros del Excel)
+src/main/resources/ application*.yml, schema*.sql, data*.sql (parametros del Excel)
 samples/     reportes de ejemplo (inicial y con cambios)
 ```
 

@@ -36,6 +36,7 @@ public class SaludController {
 
     @GetMapping("/institutos")
     public List<Map<String, Object>> institutos() {
-        return Json.camel(jdbc.queryForList("SELECT DISTINCT it, instituto FROM contratos ORDER BY it"));
+        return Json.camel(jdbc.queryForList("SELECT it, MAX(instituto) AS instituto, MAX(ciudad) AS ciudad "
+                + "FROM contratos GROUP BY it ORDER BY it"));
     }
 }

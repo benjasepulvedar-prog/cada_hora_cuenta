@@ -26,13 +26,23 @@ public class BluePrismBotService implements BotService {
 
     @Override
     public Object procesar(MultipartFile archivo) throws Exception {
+        Path automateExe = Path.of(props.automateExe());
+        if (!Files.isRegularFile(automateExe)) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("modo", modo());
+            out.put("estado", "ERROR_BLUE_PRISM_NO_INSTALADO");
+            out.put("mensaje", "No se encontro AutomateC.exe en " + automateExe.toAbsolutePath()
+                    + ". Configura BLUEPRISM_AUTOMATE_EXE o instala Blue Prism.");
+            return out;
+        }
+
         Path dir = Path.of(props.carpetaEntrada());
         Files.createDirectories(dir);
         Path destino = dir.resolve(UUID.randomUUID() + ".xlsx").toAbsolutePath();
         archivo.transferTo(destino);
 
         String startp = "<inputs><input name='Ruta Archivo' type='text' value='" + escaparXml(destino.toString()) + "'/></inputs>";
-        ProcessBuilder pb = new ProcessBuilder(props.automateExe(), "/run", props.proceso(), "/startp", startp, "/sso");
+        ProcessBuilder pb = new ProcessBuilder(automateExe.toString(), "/run", props.proceso(), "/startp", startp, "/sso");
         pb.redirectErrorStream(true);
         Process p = pb.start();
         String salida = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();

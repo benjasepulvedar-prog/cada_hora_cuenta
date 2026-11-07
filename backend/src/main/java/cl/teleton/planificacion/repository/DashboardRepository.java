@@ -1,7 +1,7 @@
 package cl.teleton.planificacion.repository;
 
-import cl.teleton.planificacion.model.DashboardFilter;
 import cl.teleton.planificacion.config.DatabaseDialect;
+import cl.teleton.planificacion.model.DashboardFilter;
 import cl.teleton.planificacion.util.Json;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +25,8 @@ public class DashboardRepository {
     private static final String METRICAS = "COUNT(DISTINCT r.persona_id) AS profesionales, "
             + "SUM(r.plan_directa) AS plan_directa, SUM(r.plan_indirecta) AS plan_indirecta, "
             + "SUM(r.plan_total) AS plan_total, SUM(r.meta_gestion) AS meta_gestion, "
+            + "SUM(r.horas_semanales) AS horas_semanales, SUM(r.horas_disp_sem) AS horas_disp_sem, "
+            + "SUM(r.horas_disp_directa_sem) AS horas_disp_directa_sem, "
             + "SUM(r.horas_disp_directa_sem) / NULLIF(SUM(r.horas_semanales), 0) AS foja ";
 
     private final JdbcTemplate jdbc;
@@ -59,6 +61,17 @@ public class DashboardRepository {
     public List<Map<String, Object>> profesional(int personaId) {
         return Json.camel(jdbc.queryForList(
                 "SELECT * FROM resultado_planificacion WHERE persona_id = ? ORDER BY it, periodo", personaId));
+    }
+
+    public List<Map<String, Object>> detalle(DashboardFilter filtro) {
+        Consulta consulta = filtro(filtro);
+        String sql = "SELECT r.persona_id, r.it, c.ciudad, r.instituto, r.sub_area, r.cod_esp, r.cargo, r.periodo, "
+                + "r.horas_semanales, r.horas_disp_sem, r.horas_disp_directa_sem, r.plan_directa, "
+                + "r.plan_indirecta, r.plan_total, r.meta_gestion, r.foja "
+                + "FROM resultado_planificacion r LEFT JOIN contratos c "
+                + "ON c.persona_id = r.persona_id AND c.it = r.it AND c.periodo = r.periodo "
+                + consulta.where() + "ORDER BY r.periodo, r.it, r.persona_id LIMIT 10000";
+        return Json.camel(jdbc.queryForList(sql, consulta.args().toArray()));
     }
 
     private record Consulta(String where, List<Object> args) {}

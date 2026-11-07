@@ -72,6 +72,17 @@ class CargaDashboardIntegrationTest {
         mvc.perform(get("/api/resumen/nacional").param("mes", "1").param("it", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totales.profesionales").value(1))
+<<<<<<< HEAD
+                .andExpect(jsonPath("$.totales.horas").value(40.0))
+                .andExpect(jsonPath("$.totales.planDirecta").isNumber())
+                .andExpect(jsonPath("$.porMes[0].planTotal").isNumber());
+
+        mvc.perform(get("/api/resumen").param("agruparPor", "profesional").param("mes", "1").param("it", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].clave").value(PERSONA_ID))
+                .andExpect(jsonPath("$[0].horas").value(40.0))
+                .andExpect(jsonPath("$[0].planTotal").isNumber());
+=======
                 .andExpect(jsonPath("$.totales.horasSemanales").value(40));
 
         mvc.perform(get("/api/institutos"))
@@ -88,6 +99,7 @@ class CargaDashboardIntegrationTest {
                 .andExpect(content().contentTypeCompatibleWith("text/csv"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Puerto Montt")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(String.valueOf(PERSONA_ID))));
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 
         mvc.perform(get("/api/carga/errores").param("limit", "1"))
                 .andExpect(status().isOk())

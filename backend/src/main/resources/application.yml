@@ -13,6 +13,8 @@ spring:
     init:
       encoding: UTF-8
       mode: always
+  flyway:
+    enabled: false
   servlet:
     multipart:
       max-file-size: 50MB
@@ -27,10 +29,21 @@ springdoc:
 
 app:
   bot:
+<<<<<<< HEAD
+    # SIMULADO   -> el propio backend hace lo que haria el bot (leer, validar, comparar, cargar). Sirve para desarrollar sin Blue Prism.
+    # BLUEPRISM  -> el backend deja el archivo en carpeta-entrada y lanza el proceso con AutomateC.exe
+    modo: SIMULADO
+    carpeta-entrada: ./entrada
+    automate-exe: 'C:\Program Files\Blue Prism Limited\Blue Prism Automate\AutomateC.exe'
+    proceso: 'Procesar Reporte BUK'
+  cors:
+    allowed-origins: "*"
+=======
     # BLUEPRISM -> modo requerido; SIMULADO queda reservado para pruebas/desarrollo explícito.
     modo: ${APP_BOT_MODO:BLUEPRISM}
     carpeta-entrada: ${BLUEPRISM_INPUT_DIR:./entrada}
     automate-exe: ${BLUEPRISM_AUTOMATE_EXE:C:\Program Files\Blue Prism Limited\Blue Prism Automate\AutomateC.exe}
     proceso: ${BLUEPRISM_PROCESO:Procesar Reporte BUK}
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
   recalculo:
     intervalo-ms: 15000       # cada cuanto se aplican los cambios PENDIENTES que deje el bot en la BD

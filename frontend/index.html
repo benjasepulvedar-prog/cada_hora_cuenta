@@ -1,16 +1,5 @@
 <!DOCTYPE html>
 <html lang="es-CL">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cada Hora Cuenta</title></head>
-<body>
-  <p>Abriendo Cada Hora Cuenta… <a href="login.html">Ir al login</a></p>
-  <script>
-    (() => {
-      const key = 'botathon.session';
-      const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
-      let valid = false;
-      try { const user = JSON.parse(raw); valid = ['central', 'instituto'].includes(user.role) && Boolean(user.email); } catch {}
-      location.replace(valid ? 'dashboard.html' : 'login.html');
-    })();
-  </script>
-</body>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=dashboard.html"><title>Cada Hora Cuenta</title></head>
+<body><p>Abriendo el dashboard… <a href="dashboard.html">Continuar</a></p></body>
 </html>

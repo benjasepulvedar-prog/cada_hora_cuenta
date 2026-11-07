@@ -1,12 +1,15 @@
 package cl.teleton.planificacion.bot;
 
 import cl.teleton.planificacion.config.AppProperties;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,8 +24,21 @@ import org.springframework.web.multipart.MultipartFile;
 public class BluePrismBotService implements BotService {
 
     private final AppProperties props;
+    private final ProcessLauncher processLauncher;
 
-    public BluePrismBotService(AppProperties props) { this.props = props; }
+    @Autowired
+    public BluePrismBotService(AppProperties props) {
+        this(props, command -> {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(true);
+            return pb.start();
+        });
+    }
+
+    BluePrismBotService(AppProperties props, ProcessLauncher processLauncher) {
+        this.props = props;
+        this.processLauncher = processLauncher;
+    }
 
     @Override
     public Object procesar(MultipartFile archivo) throws Exception {
@@ -42,9 +58,13 @@ public class BluePrismBotService implements BotService {
         archivo.transferTo(destino);
 
         String startp = "<inputs><input name='Ruta Archivo' type='text' value='" + escaparXml(destino.toString()) + "'/></inputs>";
+<<<<<<< HEAD
+        Process p = processLauncher.start(List.of(props.automateExe(), "/run", props.proceso(), "/startp", startp, "/sso"));
+=======
         ProcessBuilder pb = new ProcessBuilder(automateExe.toString(), "/run", props.proceso(), "/startp", startp, "/sso");
         pb.redirectErrorStream(true);
         Process p = pb.start();
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
         String salida = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
         int codigo = p.waitFor();
 
@@ -63,5 +83,10 @@ public class BluePrismBotService implements BotService {
 
     private static String escaparXml(String s) {
         return s.replace("&", "&amp;").replace("'", "&apos;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    @FunctionalInterface
+    interface ProcessLauncher {
+        Process start(List<String> command) throws IOException;
     }
 }

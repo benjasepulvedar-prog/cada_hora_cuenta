@@ -23,7 +23,9 @@ public class DashboardRepository {
             "profesional", "r.persona_id");
 
     private static final String METRICAS = "COUNT(DISTINCT r.persona_id) AS profesionales, "
+            + "SUM(r.horas_semanales) AS horas, "
             + "SUM(r.plan_directa) AS plan_directa, SUM(r.plan_indirecta) AS plan_indirecta, "
+            + "SUM(r.horas_disp_directa_sem) AS horas_disp_directa, "
             + "SUM(r.plan_total) AS plan_total, SUM(r.meta_gestion) AS meta_gestion, "
             + "SUM(r.horas_semanales) AS horas_semanales, SUM(r.horas_disp_sem) AS horas_disp_sem, "
             + "SUM(r.horas_disp_directa_sem) AS horas_disp_directa_sem, "

@@ -1,8 +1,16 @@
 # Planificacion asistencial - Backend (Botathon 2026 "Cada hora cuenta")
 
+<<<<<<< HEAD
+Backend Spring Boot 3 / Java 17+ con H2 para desarrollo local y un simulador del bot. Los perfiles `neon` y `prod` usan
+PostgreSQL y migraciones Flyway; `prod` inicia Blue Prism y no habilita el simulador.
+
+> **Solo datos ficticios:** la API no implementa autenticación ni autorización. No cargues información personal ni reportes
+> reales a Neon ni publiques este backend con datos reales.
+=======
 Backend Spring Boot 3 / Java 17+ configurado para utilizar Blue Prism por defecto. Por defecto utiliza H2
 persistida en disco; con el perfil `neon` utiliza PostgreSQL/Neon. El modo `SIMULADO` se reserva para pruebas o
 ejecuciones explícitas sin Blue Prism.
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 
 ## Requisitos
 - JDK 17 o superior (`java -version`)
@@ -17,24 +25,41 @@ mvn test                   # pruebas unitarias y de integración
 - Consola H2: http://localhost:8080/h2-console (JDBC `jdbc:h2:file:./data/planificacion`, user `sa`, sin clave)
 - La URL y credenciales se pueden reemplazar con `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
 
+<<<<<<< HEAD
+### Usar Neon para desarrollo/integración desde PowerShell
+
+El perfil `neon` selecciona PostgreSQL y aplica las migraciones versionadas una sola vez. No guardes la clave en
+`application.yml`, en Git ni dentro de la URL. Desde PowerShell, reemplaza el host por el endpoint de Neon:
+=======
 ### Base de datos Neon desde PowerShell
 
 El perfil `neon` selecciona PostgreSQL, crea las tablas que falten y carga los parámetros de referencia. No guarda
 la clave en `application.yml`, en Git ni dentro de la URL. En PowerShell, reemplaza el host por el endpoint de Neon
 y ejecuta:
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 
 ```powershell
+$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\cada-hora-cuenta-tools\jdk-17"
+$env:Path = "$env:JAVA_HOME\bin;$env:LOCALAPPDATA\Programs\cada-hora-cuenta-tools\apache-maven-3.9.16\bin;$env:Path"
 $env:SPRING_PROFILES_ACTIVE = 'neon'
 $env:DB_URL = 'jdbc:postgresql://<endpoint-neon>/neondb?sslmode=require&channelBinding=require'
 $credential = Get-Credential -UserName 'neondb_owner' -Message 'Credenciales de Neon'
 $env:DB_USERNAME = $credential.UserName
 $env:DB_PASSWORD = $credential.GetNetworkCredential().Password
-& "$HOME\.maven\maven-3.10.0\bin\mvn.cmd" spring-boot:run
+Set-Location 'C:\Users\bot25\Desktop\cada_hora_cuenta\backend'
+mvn.cmd clean verify
+mvn.cmd spring-boot:run
 ```
 
 `Get-Credential` solicita la clave de forma oculta. Estas variables solo aplican a esa ventana de PowerShell; al cerrar
-la ventana desaparecen. La consola H2 se desactiva en el perfil Neon.
+la ventana desaparecen. Flyway registra las migraciones en `flyway_schema_history`; las semillas solo insertan parámetros de referencia faltantes.
+El perfil Neon desactiva H2 y la inicialización repetida de scripts. Al primer arranque crea las tablas y parámetros, pero no
+carga contratos; los resultados permanecerán vacíos hasta cargar un Excel **ficticio** desde el dashboard o la API.
 
+<<<<<<< HEAD
+También puedes iniciar el backend con `.\run-neon.ps1`; solicita el endpoint y, si no están definidas, las credenciales de
+Neon de forma oculta. La aplicación corre solo en esa terminal y las migraciones crean las tablas al conectarse.
+=======
 El esquema y los parámetros iniciales se aplican al arrancar desde `schema-postgresql.sql` y `data-postgresql.sql`.
 Esto crea las tablas faltantes; no importa automáticamente el reporte de dotación. Sube el archivo desde el dashboard
 después de iniciar. Los datos iniciales usan `ON CONFLICT DO NOTHING`, así que no sustituyen parámetros ya editados.
@@ -48,9 +73,61 @@ Las atenciones realizadas/SIC no se muestran como datos reales porque no hay una
 
 Para pruebas locales sin una instalación Blue Prism, configura explícitamente `$env:APP_BOT_MODO='SIMULADO'`
 en PowerShell antes de iniciar. No se aplica como fallback automático.
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 
-Al arrancar se cargan los parametros del Excel (`data.sql`): 92 cargos con su distribucion por tramo,
-factores de atencion grupal, semanas habiles por mes, meta de gestion 90% y catalogo de asignaciones.
+### Consultar Neon desde el frontend
+
+1. Deja el backend Neon corriendo en `http://localhost:8080` con `.\backend\run-neon.ps1`, y sirve la carpeta `frontend`
+   desde VS Code Live Server (puerto 5500) o, si tienes Python, desde otra terminal:
+
+   ```powershell
+   Set-Location 'C:\Users\bot25\Desktop\cada_hora_cuenta'
+   py -m http.server 5500 --directory frontend
+   ```
+
+2. Abre `http://localhost:5500`. El frontend usa `frontend/js/config.js` para apuntar a `http://localhost:8080/api`;
+   consulta salud, institutos, resúmenes, parámetros y cargas mediante los endpoints existentes.
+3. Para cargar datos, selecciona un Excel `.xlsx` **con información ficticia** en el dashboard. La API lo procesa y calcula
+   los resultados que luego se muestran desde PostgreSQL.
+4. Si hospedas el frontend en otro dominio, cambia `apiBaseUrl` en `frontend/js/config.js` por la URL HTTPS del backend y
+   define `CORS_ALLOWED_ORIGINS` con el origen exacto del frontend antes de arrancar Neon. No pongas credenciales de Neon
+   en ningún archivo del frontend.
+
+El dashboard no muestra datos ficticios locales ni valores de SIC inventados. El backend actual no entrega nombres de
+profesionales ni datos de atenciones realizadas desde SIC; muestra los IDs y métricas que realmente entrega el API.
+
+### Perfil de producción (Windows)
+
+Blue Prism ejecuta `AutomateC.exe`; por eso el backend debe correr en un servidor Windows autorizado donde esté instalado
+el runtime de Blue Prism y que tenga acceso de red a PostgreSQL. El perfil `prod`:
+
+- exige `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `BOT_INPUT_DIR`, `BLUEPRISM_AUTOMATE_EXE` y `BLUEPRISM_PROCESS_NAME`;
+- fuerza PostgreSQL y Blue Prism, deshabilita H2, Swagger y la carga repetida de SQL en cada arranque;
+- ejecuta migraciones Flyway versionadas, con semillas que no sobrescriben valores existentes;
+- no habilita CORS salvo que se configure explícitamente `CORS_ALLOWED_ORIGINS` con orígenes permitidos.
+
+Ejemplo PowerShell (usa valores de tu infraestructura; no guardes contraseñas en archivos):
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'prod'
+$env:DB_URL = 'jdbc:postgresql://<servidor>:5432/<base>?sslmode=require'
+$credential = Get-Credential -Message 'Credenciales PostgreSQL'
+$env:DB_USERNAME = $credential.UserName
+$env:DB_PASSWORD = $credential.GetNetworkCredential().Password
+$env:BOT_INPUT_DIR = 'D:\BluePrism\entrada'
+$env:BLUEPRISM_AUTOMATE_EXE = 'C:\Program Files\Blue Prism Limited\Blue Prism Automate\AutomateC.exe'
+$env:BLUEPRISM_PROCESS_NAME = 'Procesar Reporte BUK'
+$env:CORS_ALLOWED_ORIGINS = 'https://planificacion.institucion.cl'
+mvn clean verify
+java -jar target\planificacion-0.1.0.jar
+```
+
+Configura HTTPS en el proxy institucional y restringe el puerto del backend/firewall para que solo acepte tráfico autorizado.
+Deja `CORS_ALLOWED_ORIGINS` vacío si frontend y API comparten origen. **Este perfil no configura autenticación**: no habilites
+tráfico de usuarios ni datos reales hasta implementar y probar SSO/OIDC y controles de autorización del lado servidor.
+
+En H2 local los parámetros se cargan desde `data.sql`. En Neon/producción las migraciones Flyway crean las tablas y cargan
+los parámetros de referencia faltantes (cargos, factores grupales, semanas hábiles, meta y catálogo de asignaciones).
 
 ## Flujo de demo (carpeta `samples/`)
 1. `POST /api/carga/buk` con `1_Base_contratos_inicial.xlsx` -> carga inicial y calculo completo.
@@ -108,6 +185,26 @@ Contraste con la hoja `Dotacion_Asistencial` (471 profesionales): la atencion se
 El resto difiere por detalles que este MVP aun no modela: licencias, vacaciones y permisos (semanas descontadas),
 excepciones manuales del Excel, "Cambio % atencion grupal" aprobado y horas de colacion/pausa saludable.
 
+<<<<<<< HEAD
+## Pasar de simulador a Blue Prism
+Para desarrollo, `application.yml` se puede configurar así:
+```yaml
+app.bot.modo: BLUEPRISM
+```
+- El backend deja el archivo en `app.bot.carpeta-entrada` y lanza `AutomateC.exe /run "<proceso>" /startp ...`
+  (ver `BluePrismBotService`).
+- El bot debe escribir en las tablas `contratos`, `cambios_detectados`, `errores_carga` y `log_ejecucion`
+  (ver `db/migration/V1__schema.sql`). `RecalculoScheduler` aplica los cambios PENDIENTES cada 15 s.
+- Para producción usa PostgreSQL; el perfil `prod` no ofrece H2 ni reinicializa esquema/semillas en cada arranque.
+- La logica de `CargaService` (validaciones, llave `PersonaId|IT|Periodo`, tipos de cambio, BAJA = ya no aparece
+  en el reporte, rige desde el ultimo mes del archivo) es la especificacion de lo que debe hacer el proceso de Blue Prism.
+
+## Fuera de alcance / bloqueos de producción
+Autenticación institucional y autorización por rol/instituto (obligatorias antes de usar datos reales: el reporte contiene
+datos personales; la API pública de demostración no tiene autenticación), comparación contra SIC,
+aprobaciones con historial de versiones,
+licencias/vacaciones/permisos, feriados regionales precargados (se pueden cargar con el endpoint de calendario) y el frontend.
+=======
 ## Blue Prism
 El modo predeterminado es `BLUEPRISM`. Configura `BLUEPRISM_AUTOMATE_EXE`, `BLUEPRISM_PROCESO` y
 `BLUEPRISM_INPUT_DIR` si las rutas difieren de los valores por defecto. Si no encuentra `AutomateC.exe`, la carga
@@ -129,6 +226,7 @@ app.bot.modo: BLUEPRISM
 Autenticación y autorización reales (el login actual es solo del frontend y los endpoints no protegen por rol),
 comparación con SIC, nombres de profesionales, aprobaciones con historial de versiones, licencias/vacaciones/permisos
 y feriados regionales precargados. La fecha de nacimiento del Excel se ignora y no se almacena.
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 
 ## Estructura
 ```

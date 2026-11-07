@@ -1,0 +1,39 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+  h2:
+    console:
+      enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  database-type: postgresql
+  bot:
+    modo: BLUEPRISM
+    carpeta-entrada: ${BOT_INPUT_DIR}
+    automate-exe: ${BLUEPRISM_AUTOMATE_EXE}
+    proceso: ${BLUEPRISM_PROCESS_NAME}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}

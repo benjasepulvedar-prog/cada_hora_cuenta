@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Blue Prism (leer, validar, comparar, cargar). En la demo real este paso lo ejecuta Blue Prism.
  */
 @Service
+@Profile("!prod")
 @ConditionalOnProperty(prefix = "app.bot", name = "modo", havingValue = "SIMULADO", matchIfMissing = true)
 public class SimuladorBotService implements BotService {
 

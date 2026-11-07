@@ -1,4 +1,4 @@
-﻿-- ===== Parametros (editables por API, no estan en el codigo) =====
+-- Production PostgreSQL schema.
 CREATE TABLE IF NOT EXISTS parametros_cargo (
   cargo         VARCHAR(150) PRIMARY KEY,
   unidad        VARCHAR(80),
@@ -63,4 +63,3 @@ CREATE TABLE IF NOT EXISTS resultado_planificacion (
   calculado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (persona_id, it, periodo)
 );
-

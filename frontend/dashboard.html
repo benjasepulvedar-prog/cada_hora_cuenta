@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cada Hora Cuenta | Dashboard Teletón</title>
+  <meta name="description" content="Planificación asistencial consultada desde la API del backend.">
+  <title>Cada Hora Cuenta | Planificación asistencial</title>
   <link rel="icon" href="assets/logo-teleton.png">
   <link rel="stylesheet" href="css/dashboard.css">
 </head>
@@ -12,16 +13,69 @@
     <aside class="sidebar">
       <div class="brand"><img src="assets/logo-teleton.png" alt="Logo Teletón"><div><strong>Teletón</strong><small>Cada Hora Cuenta</small></div></div>
       <div class="nav-title">PLATAFORMA</div>
-      <nav class="menu" id="menu" aria-label="Menú principal">
+      <nav class="menu" aria-label="Menú principal">
         <button data-view="resumen" class="active" type="button"><span>▦</span><b>Resumen general</b></button>
         <button data-view="profesionales" type="button"><span>♙</span><b>Profesionales</b></button>
+<<<<<<< HEAD
+        <button data-view="sic" type="button"><span>▥</span><b>Comparación SIC</b></button>
+        <button data-view="parametros" type="button"><span>⚙</span><b>Parámetros</b></button>
+        <button data-view="historial" type="button"><span>◷</span><b>Historial de cargas</b></button>
+      </nav>
+      <div class="aside-bottom"><b id="api-status">Conectando a la API…</b><p>Los datos se consultan en el backend configurado.</p></div>
+=======
         <button data-view="historial" type="button"><span>◷</span><b>Cargas</b></button>
       </nav>
       <div class="aside-bottom"><b>● Datos desde backend</b><p>Resumen y detalle consultados desde la base de datos.</p></div>
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
     </aside>
     <div class="workspace">
-      <header class="topbar"><div class="crumb"><b>Planificación asistencial</b> / <span id="breadcrumb">Resumen general</span></div><div class="user"><span class="pill">DEMO</span><div class="avatar" id="avatar">P</div><div class="user-info"><b id="username">Usuario</b><small id="role-name">Planificación central</small></div><button class="logout" id="logout" type="button">Salir</button></div></header>
+      <header class="topbar">
+        <div class="crumb"><b>Planificación asistencial</b> / <span id="breadcrumb">Resumen general</span></div>
+        <div class="user"><span class="pill">API</span><div class="user-info"><b id="database-status">Conectando…</b><small>Backend / base de datos</small></div><button class="logout" id="refresh" type="button">Actualizar</button></div>
+      </header>
       <main class="main">
+<<<<<<< HEAD
+        <div class="heading"><div><div class="eyebrow">GESTIÓN ASISTENCIAL</div><h1 id="title">Resumen nacional</h1><p>Indicadores obtenidos desde el servicio de planificación.</p></div></div>
+        <div class="notice" id="notice">La información de esta demostración se obtiene desde la API. No se cargan datos ficticios desde el navegador.</div>
+        <p class="form__alert" id="api-error" role="alert" hidden></p>
+        <div class="filters">
+          <label>Instituto<select id="instituto"><option value="">Todos los institutos</option></select></label>
+          <label>Área<select id="area"><option value="">Todas las áreas</option></select></label>
+          <label>Período<select id="mes"><option value="">Todos los meses</option></select></label>
+          <label>Buscar por ID<input id="buscar" type="search" inputmode="numeric" placeholder="ID de profesional"></label>
+          <button class="btn secondary" id="limpiar" type="button">Limpiar</button>
+        </div>
+
+        <section class="view active" id="resumen">
+          <div class="cards" id="cards"></div>
+          <div class="two-columns">
+            <article class="panel"><div class="panel-head"><div><div class="kicker">PLAN MENSUAL</div><h2>Plan y meta de gestión</h2><p>Resultados calculados que informa el backend.</p></div></div><div class="chart" id="chart"></div></article>
+            <article class="panel"><div class="panel-head"><div><div class="kicker">DISTRIBUCIÓN</div><h2>Atenciones planificadas</h2><p>Totales según reglas y parámetros vigentes.</p></div></div><div class="distribution" id="distribution"></div></article>
+          </div>
+          <article class="panel"><div class="panel-head"><div><div class="kicker">DETALLE</div><h2>Planificación por instituto</h2><p>Totales consultados para los filtros seleccionados.</p><form id="upload-form"><label for="upload-file">Cargar Excel ficticio (.xlsx)</label> <input id="upload-file" type="file" accept=".xlsx" required><button class="btn secondary" type="submit">Cargar y recalcular</button></form><small id="upload-status" role="status"></small></div><button id="show-people" class="btn secondary" type="button">Ver profesionales →</button></div><div class="table-scroll"><table class="data-table"><thead id="summary-head"></thead><tbody id="summary-body"></tbody></table></div></article>
+        </section>
+
+        <section class="view" id="profesionales">
+          <p class="section-info">El API entrega el identificador de persona y sus resultados agregados; no contiene nombres.</p>
+          <article class="panel"><div class="panel-head"><div><div class="kicker">DOTACIÓN ASISTENCIAL</div><h2>Resultados por profesional</h2></div><button id="exportar" class="btn secondary" type="button">↓ Exportar CSV</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>ID persona</th><th class="num">Horas semanales*</th><th class="num">Plan directa</th><th class="num">Plan indirecta</th><th class="num">Plan total</th><th class="num">Meta gestión</th><th class="num">FOJA</th></tr></thead><tbody id="people-body"></tbody></table></div><p class="section-info">* Suma de jornadas en los períodos filtrados.</p></article>
+        </section>
+        <section class="view" id="sic"><article class="panel"><div class="panel-head"><div><div class="kicker">COMPARACIÓN SIC</div><h2>Datos SIC no disponibles</h2><p>El backend actual no ofrece una API de resultados realizados desde SIC. No se muestran valores simulados.</p></div></div></article></section>
+        <section class="view" id="parametros">
+          <article class="panel"><div class="panel-head"><div><div class="kicker">PARÁMETROS DE CÁLCULO</div><h2>Parámetros obtenidos de la API</h2><p>Vista de solo lectura; los cambios se realizan mediante endpoints autorizados.</p></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Tipo</th><th>Nombre</th><th>Detalle</th></tr></thead><tbody id="params-body"></tbody></table></div></article>
+        </section>
+        <section class="view" id="historial">
+          <div class="two-columns">
+            <article class="panel"><div class="panel-head"><div><div class="kicker">EJECUCIONES</div><h2>Últimas cargas</h2></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Estado</th><th>Filas</th><th>Errores</th></tr></thead><tbody id="loads-body"></tbody></table></div></article>
+            <article class="panel"><div class="panel-head"><div><div class="kicker">CAMBIOS</div><h2>Cambios detectados</h2></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Persona</th><th>Tipo</th><th>Detalle</th><th>Estado</th></tr></thead><tbody id="changes-body"></tbody></table></div></article>
+          </div>
+          <article class="panel"><div class="panel-head"><div><div class="kicker">VALIDACIÓN</div><h2>Errores recientes de carga</h2></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Fila</th><th>Persona</th><th>Campo</th><th>Mensaje</th></tr></thead><tbody id="errors-body"></tbody></table></div></article>
+        </section>
+        <div class="footer">Cada Hora Cuenta · Datos consultados desde la API</div>
+      </main>
+    </div>
+  </div>
+  <script src="js/config.js"></script>
+=======
         <div class="heading"><div><div class="eyebrow">GESTIÓN ASISTENCIAL · BASE DE DATOS</div><h1 id="title">Resumen nacional</h1><p id="subtitle">Indicadores calculados desde los reportes cargados.</p></div><div class="upload"><input id="excel-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button id="refresh" class="btn secondary" type="button">↻ Actualizar</button><button id="cargar-excel" class="btn" type="button" data-central>↑ Cargar Excel BUK</button></div></div>
         <div class="notice" id="api-status" role="status" aria-live="polite">Conectando con el backend…</div>
         <div class="filters"><label>Instituto<select id="instituto"><option value="">Todos los institutos</option></select></label><label>Sub-área<select id="area"><option value="">Todas las sub-áreas</option></select></label><label>Período<select id="mes"><option value="all">Año completo</option></select></label><label>Persona ID<input id="buscar" type="search" inputmode="numeric" placeholder="Buscar por ID"></label><button class="btn secondary" id="limpiar" type="button">Limpiar</button></div>
@@ -39,6 +93,8 @@
     </div>
   </div>
 
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
   <script src="js/data-service.js"></script>
   <script src="js/dashboard.js"></script>
+</body>
 </html>

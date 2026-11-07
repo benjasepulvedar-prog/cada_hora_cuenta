@@ -1,3 +1,66 @@
+<<<<<<< HEAD
+(() => {
+  'use strict';
+
+  const configuredBase = window.CHC_CONFIG && window.CHC_CONFIG.apiBaseUrl;
+  const baseUrl = (configuredBase || `${window.location.origin}/api`).replace(/\/+$/, '');
+
+  async function request(path, query = {}) {
+    const url = new URL(`${baseUrl}/${path.replace(/^\/+/, '')}`);
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
+    });
+
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' }
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `La API respondió HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  function filtered(query) {
+    return Object.fromEntries(
+      Object.entries(query).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    );
+  }
+
+  async function upload(file) {
+    const form = new FormData();
+    form.append('archivo', file);
+    const response = await fetch(`${baseUrl}/carga/buk`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: form
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `La API respondió HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  window.CHCDataService = Object.freeze({
+    apiBaseUrl: baseUrl,
+    health: () => request('salud'),
+    institutes: () => request('institutos'),
+    summary: (query = {}) => request('resumen', filtered(query)),
+    national: (query = {}) => request('resumen/nacional', filtered(query)),
+    professional: (personaId) => request(`resumen/profesional/${encodeURIComponent(personaId)}`),
+    cargos: () => request('parametros/cargos'),
+    generales: () => request('parametros/generales'),
+    calendario: () => request('parametros/calendario'),
+    asignaciones: () => request('parametros/asignaciones'),
+    loads: () => request('carga/estado'),
+    changes: (query = {}) => request('cambios', filtered(query)),
+    errors: (limit = 100) => request('carga/errores', { limit }),
+    upload
+  });
+=======
 /* Cliente HTTP del backend. La interfaz nunca consulta ni modifica la BD directamente. */
 (() => {
   'use strict';
@@ -67,4 +130,5 @@
   }
 
   window.CHCDataService = Object.freeze({ loadDashboard, getInstitutes, getAreas, getHealth, getHistory, uploadExcel, downloadCsv });
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 })();

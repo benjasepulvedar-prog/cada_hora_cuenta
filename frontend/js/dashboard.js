@@ -1,3 +1,297 @@
+<<<<<<< HEAD
+(() => {
+  'use strict';
+
+  const service = window.CHCDataService;
+  const $ = id => document.getElementById(id);
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const views = {
+    resumen: 'Resumen nacional',
+    profesionales: 'Profesionales',
+    sic: 'Comparación SIC',
+    parametros: 'Parámetros',
+    historial: 'Historial de cargas'
+  };
+  const state = { view: 'resumen', it: '', area: '', month: '', search: '' };
+  let institutes = [];
+  let professionalRows = [];
+
+  const number = value => new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 })
+    .format(Number(value) || 0);
+  const percent = value => `${number((Number(value) || 0) * 100)}%`;
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[character]));
+
+  function showError(error) {
+    const box = $('api-error');
+    box.textContent = `No se pudieron cargar los datos: ${error.message}`;
+    box.hidden = false;
+    $('api-status').textContent = 'API no disponible';
+    $('database-status').textContent = 'Error de conexión';
+  }
+
+  function clearError() {
+    $('api-error').textContent = '';
+    $('api-error').hidden = true;
+  }
+
+  function filters(includeMonth = true) {
+    const query = { it: state.it, area: state.area };
+    if (includeMonth) query.mes = state.month;
+    const personaId = state.search.trim();
+    if (/^\d+$/.test(personaId)) query.personaId = personaId;
+    return query;
+  }
+
+  function card(title, value, note, featured = false) {
+    return `<div class="card ${featured ? 'featured' : ''}"><small>${escapeHtml(title)}</small><strong>${escapeHtml(value)}</strong><em>${escapeHtml(note)}</em></div>`;
+  }
+
+  function renderMonthly(rows) {
+    const byMonth = new Map(rows.map(row => [Number(row.mes), row]));
+    const maximum = Math.max(1, ...rows.map(row => Number(row.planTotal) || 0));
+    $('chart').innerHTML = months.map((month, index) => {
+      const row = byMonth.get(index + 1);
+      const planned = Number(row && row.planTotal) || 0;
+      const target = Number(row && row.metaGestion) || 0;
+      return `<div class="chart-col" title="${month}: ${number(planned)} planificadas, ${number(target)} meta">
+        <div class="chart-bars"><i style="height:${planned / maximum * 100}%"></i><i class="real" style="height:${target / maximum * 100}%"></i></div>
+        <small>${month}</small></div>`;
+    }).join('');
+  }
+
+  function renderDistribution(total) {
+    const direct = Number(total.planDirecta) || 0;
+    const indirect = Number(total.planIndirecta) || 0;
+    const all = direct + indirect;
+    const rows = [
+      ['Atención directa planificada', direct],
+      ['Atención indirecta planificada', indirect]
+    ];
+    $('distribution').innerHTML = rows.map(([label, amount]) => {
+      const share = all ? amount * 100 / all : 0;
+      return `<div class="progress-line"><div><b>${label}</b><span>${number(amount)} · ${number(share)}%</span></div>
+        <div class="progress-track"><span style="width:${share}%"></span></div></div>`;
+    }).join('');
+  }
+
+  function instituteName(value) {
+    const match = institutes.find(item => String(item.it) === String(value)
+      || String(item.instituto) === String(value));
+    return match ? `${match.instituto} (IT ${match.it})` : value;
+  }
+
+  async function renderSummary() {
+    const query = filters();
+    const [national, grouped] = await Promise.all([
+      service.national(query),
+      service.summary({ ...query, agruparPor: 'instituto' })
+    ]);
+    const total = national.totales || {};
+    $('cards').innerHTML = [
+      card('Profesionales', number(total.profesionales), 'En el período filtrado'),
+      card('Horas semanales', number(total.horas), 'Suma de jornadas reportadas'),
+      card('Plan total', number(total.planTotal), 'Atenciones directas e indirectas'),
+      card('Meta de gestión', number(total.metaGestion), 'Atenciones objetivo', true)
+    ].join('');
+    renderMonthly(national.porMes || []);
+    renderDistribution(total);
+    $('summary-head').innerHTML = `<tr><th>Instituto</th><th class="num">Profesionales</th>
+      <th class="num">Horas semanales*</th><th class="num">Plan directa</th><th class="num">Plan indirecta</th>
+      <th class="num">Plan total</th><th class="num">Meta gestión</th></tr>`;
+    $('summary-body').innerHTML = grouped.length ? grouped.map(row => `<tr>
+      <td>${escapeHtml(instituteName(row.clave))}</td><td class="num">${number(row.profesionales)}</td>
+      <td class="num">${number(row.horas)}</td><td class="num">${number(row.planDirecta)}</td>
+      <td class="num">${number(row.planIndirecta)}</td><td class="num">${number(row.planTotal)}</td>
+      <td class="num">${number(row.metaGestion)}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="empty">La API no tiene resultados para estos filtros.</td></tr>';
+  }
+
+  async function renderProfessionals() {
+    const query = filters();
+    const rows = await service.summary({ ...query, agruparPor: 'profesional' });
+    professionalRows = rows.filter(row => !state.search.trim()
+      || String(row.clave).includes(state.search.trim()));
+    $('people-body').innerHTML = professionalRows.length ? professionalRows.map(row => `<tr>
+      <td><strong>${escapeHtml(row.clave)}</strong></td><td class="num">${number(row.horas)}</td>
+      <td class="num">${number(row.planDirecta)}</td><td class="num">${number(row.planIndirecta)}</td>
+      <td class="num">${number(row.planTotal)}</td><td class="num">${number(row.metaGestion)}</td>
+      <td class="num">${percent(row.foja)}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="empty">No hay resultados para estos filtros.</td></tr>';
+  }
+
+  async function renderParameters() {
+    const [cargos, generales, calendario, asignaciones] = await Promise.all([
+      service.cargos(), service.generales(), service.calendario(), service.asignaciones()
+    ]);
+    const rows = [
+      ...cargos.map(row => ['Cargo', row.cargo, `${row.unidad || ''} · estándar directo: ${row.stdDirecta} min; indirecto: ${row.stdIndirecta} min`]),
+      ...generales.map(row => ['General', row.clave, `${row.valor}${row.descripcion ? ` · ${row.descripcion}` : ''}`]),
+      ...(calendario.nacional || []).map(row => ['Calendario nacional', row.mes, `${row.semanasHabiles} semanas hábiles`]),
+      ...(calendario.porInstituto || []).map(row => ['Calendario IT', row.it, `Mes ${row.mes}: ${row.semanasHabiles} semanas hábiles`]),
+      ...asignaciones.map(row => ['Asignación', row.nombre, `${row.horasSemanales} h/sem · autorización: ${row.requiereAutorizacion ? 'requerida' : 'no requerida'}`])
+    ];
+    $('params-body').innerHTML = rows.map(([type, name, detail]) => `<tr>
+      <td>${escapeHtml(type)}</td><td>${escapeHtml(name)}</td><td>${escapeHtml(detail)}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="empty">No hay parámetros en la API.</td></tr>';
+  }
+
+  async function renderHistory() {
+    const [loads, changes, errors] = await Promise.all([
+      service.loads(), service.changes({ limit: 100 }), service.errors(100)
+    ]);
+    $('loads-body').innerHTML = loads.length ? loads.map(row => `<tr>
+      <td>${escapeHtml(row.fecha)}</td><td>${escapeHtml(row.archivo)}</td><td>${escapeHtml(row.resultado)}</td>
+      <td>${number(row.filasLeidas)} / ${number(row.filasValidas)}</td><td>${number(row.errores)}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="empty">No hay cargas registradas.</td></tr>';
+    $('changes-body').innerHTML = changes.length ? changes.map(row => `<tr>
+      <td>${escapeHtml(row.personaId)}</td><td>${escapeHtml(row.tipo)}</td>
+      <td>${escapeHtml(row.detalle)}</td><td>${escapeHtml(row.estado)}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No hay cambios registrados.</td></tr>';
+    $('errors-body').innerHTML = errors.length ? errors.map(row => `<tr>
+      <td>${escapeHtml(row.fecha)}</td><td>${escapeHtml(row.archivo)}</td><td>${number(row.fila)}</td>
+      <td>${escapeHtml(row.personaId)}</td><td>${escapeHtml(row.campo)}</td><td>${escapeHtml(row.mensaje)}</td></tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No hay errores de carga.</td></tr>';
+  }
+
+  async function render() {
+    clearError();
+    if (state.view === 'resumen') await renderSummary();
+    if (state.view === 'profesionales') await renderProfessionals();
+    if (state.view === 'parametros') await renderParameters();
+    if (state.view === 'historial') await renderHistory();
+  }
+
+  async function refresh() {
+    try {
+      const health = await service.health();
+      $('api-status').textContent = health.estado === 'UP' ? 'API disponible' : 'API con problemas';
+      $('database-status').textContent = health.estado === 'UP'
+        ? `${health.modoBot} · ${number(health.contratos)} contratos` : 'Sin conexión';
+      await render();
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  function updateView(view) {
+    if (!views[view]) return;
+    state.view = view;
+    document.querySelectorAll('.view').forEach(section => {
+      section.classList.toggle('active', section.id === view);
+    });
+    document.querySelectorAll('[data-view]').forEach(button => {
+      button.classList.toggle('active', button.dataset.view === view);
+    });
+    $('title').textContent = views[view];
+    $('breadcrumb').textContent = views[view];
+    refresh();
+  }
+
+  function exportCsv() {
+    const rows = [
+      ['ID persona', 'Horas semanales', 'Plan directa', 'Plan indirecta', 'Plan total', 'Meta gestión', 'FOJA'],
+      ...professionalRows.map(row => [row.clave, row.horas, row.planDirecta, row.planIndirecta,
+        row.planTotal, row.metaGestion, row.foja])
+    ];
+    const cell = value => {
+      const text = String(value ?? '');
+      const safe = /^[=+@\-\\t\\r]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const blob = new Blob(['\ufeff', rows.map(row => row.map(cell).join(';')).join('\r\n')],
+      { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'planificacion_api.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function initialize() {
+    try {
+      await loadFilters();
+    } catch (error) {
+      showError(error);
+    }
+    await refresh();
+  }
+
+  async function loadFilters() {
+    const [availableInstitutes, areas, monthsInDb] = await Promise.all([
+      service.institutes(),
+      service.summary({ agruparPor: 'area' }),
+      service.summary({ agruparPor: 'mes' })
+    ]);
+    institutes = availableInstitutes;
+
+    const selectedInstitute = state.it;
+    $('instituto').replaceChildren(new Option('Todos los institutos', ''));
+    institutes.forEach(item => {
+      $('instituto').add(new Option(`${item.instituto} (IT ${item.it})`, item.it));
+    });
+    $('instituto').value = selectedInstitute;
+
+    const selectedArea = state.area;
+    $('area').replaceChildren(new Option('Todas las áreas', ''));
+    [...new Set(areas.map(row => row.clave).filter(Boolean))].sort().forEach(area => {
+      $('area').add(new Option(area, area));
+    });
+    $('area').value = selectedArea;
+
+    const selectedMonth = state.month;
+    $('mes').replaceChildren(new Option('Todos los meses', ''));
+    monthsInDb.sort((a, b) => Number(a.clave) - Number(b.clave)).forEach(row => {
+      const month = Number(row.clave);
+      if (month >= 1 && month <= 12) $('mes').add(new Option(months[month - 1], month));
+    });
+    $('mes').value = selectedMonth;
+  }
+
+  $('instituto').addEventListener('change', event => { state.it = event.target.value; refresh(); });
+  $('area').addEventListener('change', event => { state.area = event.target.value; refresh(); });
+  $('mes').addEventListener('change', event => { state.month = event.target.value; refresh(); });
+  $('buscar').addEventListener('input', event => {
+    state.search = event.target.value.replace(/\D/g, '');
+    event.target.value = state.search;
+    refresh();
+  });
+  $('limpiar').addEventListener('click', () => {
+    state.it = '';
+    state.area = '';
+    state.month = '';
+    state.search = '';
+    $('instituto').value = '';
+    $('area').value = '';
+    $('mes').value = '';
+    $('buscar').value = '';
+    refresh();
+  });
+  $('refresh').addEventListener('click', refresh);
+  $('show-people').addEventListener('click', () => updateView('profesionales'));
+  $('exportar').addEventListener('click', exportCsv);
+  $('upload-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const file = $('upload-file').files[0];
+    if (!file) return;
+    $('upload-status').textContent = 'Cargando y recalculando…';
+    try {
+      const result = await service.upload(file);
+      $('upload-status').textContent = `Carga ${result.carga?.estado || result.estado || 'completada'}.`;
+      await loadFilters();
+      await refresh();
+    } catch (error) {
+      $('upload-status').textContent = `Error: ${error.message}`;
+    }
+  });
+  document.querySelectorAll('[data-view]').forEach(button => {
+    button.addEventListener('click', () => updateView(button.dataset.view));
+  });
+
+  initialize();
+=======
 /* Cada Hora Cuenta - vistas conectadas al backend */
 (() => {
   'use strict';
@@ -182,4 +476,5 @@
     botMode=health.modoBot||'desconocido';
     load();
   }).catch(error=>status(`No se pudo conectar al backend: ${error.message}`,true));
+>>>>>>> 902aecbaeaf99711cf458cf8140199feb8a7a9b9
 })();

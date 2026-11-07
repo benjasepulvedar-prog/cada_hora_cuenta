@@ -1,6 +1,7 @@
 package cl.teleton.planificacion.controller;
 
 import cl.teleton.planificacion.service.CalculoService;
+import cl.teleton.planificacion.config.DatabaseDialect;
 import cl.teleton.planificacion.util.Json;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,10 +31,12 @@ public class ParametrosController {
 
     private final JdbcTemplate jdbc;
     private final CalculoService calculo;
+    private final DatabaseDialect dialect;
 
-    public ParametrosController(JdbcTemplate jdbc, CalculoService calculo) {
+    public ParametrosController(JdbcTemplate jdbc, CalculoService calculo, DatabaseDialect dialect) {
         this.jdbc = jdbc;
         this.calculo = calculo;
+        this.dialect = dialect;
     }
 
     @GetMapping("/cargos")
@@ -109,7 +112,10 @@ public class ParametrosController {
     public Map<String, Object> actualizarMes(@PathVariable("mes") int mes, @RequestBody Semanas body,
                                              @RequestParam(name = "recalcular", defaultValue = "false") boolean recalcular) {
         validar(mes, body);
-        jdbc.update("MERGE INTO calendario_mes (mes, semanas_habiles) KEY (mes) VALUES (?, ?)", mes, body.semanasHabiles());
+        String sql = dialect.isPostgres()
+            ? "INSERT INTO calendario_mes (mes,semanas_habiles) VALUES (?,?) ON CONFLICT (mes) DO UPDATE SET semanas_habiles=EXCLUDED.semanas_habiles"
+            : "MERGE INTO calendario_mes (mes, semanas_habiles) KEY (mes) VALUES (?, ?)";
+        jdbc.update(sql, mes, body.semanasHabiles());
         Map<String, Object> out = new LinkedHashMap<>(Map.of("mes", mes, "semanasHabiles", body.semanasHabiles()));
         if (recalcular) out.put("recalculo", calculo.recalcularTodo());
         return out;
@@ -121,8 +127,10 @@ public class ParametrosController {
                                                       @RequestBody Semanas body,
                                                       @RequestParam(name = "recalcular", defaultValue = "false") boolean recalcular) {
         validar(mes, body);
-        jdbc.update("MERGE INTO calendario_it (it, mes, semanas_habiles) KEY (it, mes) VALUES (?, ?, ?)",
-                it, mes, body.semanasHabiles());
+        String sql = dialect.isPostgres()
+            ? "INSERT INTO calendario_it (it,mes,semanas_habiles) VALUES (?,?,?) ON CONFLICT (it,mes) DO UPDATE SET semanas_habiles=EXCLUDED.semanas_habiles"
+            : "MERGE INTO calendario_it (it, mes, semanas_habiles) KEY (it, mes) VALUES (?, ?, ?)";
+        jdbc.update(sql, it, mes, body.semanasHabiles());
         Map<String, Object> out = new LinkedHashMap<>(Map.of("it", it, "mes", mes, "semanasHabiles", body.semanasHabiles()));
         if (recalcular) out.put("recalculo", calculo.recalcularTodo());
         return out;

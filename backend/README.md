@@ -21,6 +21,24 @@ mvn test                   # prueba de la formula (caso Fisiatra 40 h del Excel)
 - Consola H2: http://localhost:8080/h2-console (JDBC `jdbc:h2:file:./data/planificacion`, user `sa`, sin clave)
 - La URL y credenciales se pueden reemplazar con `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
 
+### Usar Neon desde PowerShell
+
+El perfil `neon` selecciona PostgreSQL, inicializa el esquema y carga los parametros de referencia. No guardes
+la clave en `application.yml`, en Git ni dentro de la URL. En PowerShell, reemplaza el host por el endpoint de Neon
+y ejecuta:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'neon'
+$env:DB_URL = 'jdbc:postgresql://<endpoint-neon>/neondb?sslmode=require&channelBinding=require'
+$credential = Get-Credential -UserName 'neondb_owner' -Message 'Credenciales de Neon'
+$env:DB_USERNAME = $credential.UserName
+$env:DB_PASSWORD = $credential.GetNetworkCredential().Password
+& "$HOME\.maven\maven-3.10.0\bin\mvn.cmd" spring-boot:run
+```
+
+`Get-Credential` solicita la clave de forma oculta. Estas variables solo aplican a esa ventana de PowerShell; al cerrar
+la ventana desaparecen. La consola H2 se desactiva en el perfil Neon.
+
 El frontend está en `../frontend/`. Inicia el backend en el puerto 8080 y abre `login.html`; el dashboard consulta
 `http://localhost:8080/api` y permite subir reportes `.xlsx` desde la misma interfaz.
 

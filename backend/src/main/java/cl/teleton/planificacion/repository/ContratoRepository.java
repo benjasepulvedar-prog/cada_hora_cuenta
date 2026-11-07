@@ -2,6 +2,7 @@ package cl.teleton.planificacion.repository;
 
 import cl.teleton.planificacion.model.ContratoRow;
 import cl.teleton.planificacion.model.FilaBuk;
+import cl.teleton.planificacion.config.DatabaseDialect;
 import java.sql.Date;
 import java.sql.Types;
 import java.time.LocalDate;
@@ -17,8 +18,12 @@ import org.springframework.stereotype.Repository;
 public class ContratoRepository {
 
     private final JdbcTemplate jdbc;
+    private final DatabaseDialect dialect;
 
-    public ContratoRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public ContratoRepository(JdbcTemplate jdbc, DatabaseDialect dialect) {
+        this.jdbc = jdbc;
+        this.dialect = dialect;
+    }
 
     private static final RowMapper<ContratoRow> MAPPER = (rs, i) -> {
         Date term = rs.getDate("fecha_termino");
@@ -59,9 +64,22 @@ public class ContratoRepository {
         int[] tipos = {Types.INTEGER, Types.INTEGER, Types.DATE, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.DATE, Types.DOUBLE, Types.VARCHAR,
                 Types.VARCHAR, Types.VARCHAR, Types.BOOLEAN};
-        jdbc.batchUpdate("MERGE INTO contratos (persona_id,it,periodo,instituto,ciudad,sub_area,cod_esp,tipo_contrato,"
+        String sql;
+        if (dialect.isPostgres()) {
+            sql = "INSERT INTO contratos (persona_id,it,periodo,instituto,ciudad,sub_area,cod_esp,tipo_contrato,"
                 + "tipo_trabajador,fecha_termino,horas_semanales,cargo,reg_sic,archivo_origen,vigente) "
-                + "KEY (persona_id,it,periodo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", lote, tipos);
+                + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (persona_id,it,periodo) DO UPDATE SET "
+                + "instituto=EXCLUDED.instituto, ciudad=EXCLUDED.ciudad, sub_area=EXCLUDED.sub_area, "
+                + "cod_esp=EXCLUDED.cod_esp, tipo_contrato=EXCLUDED.tipo_contrato, "
+                + "tipo_trabajador=EXCLUDED.tipo_trabajador, fecha_termino=EXCLUDED.fecha_termino, "
+                + "horas_semanales=EXCLUDED.horas_semanales, cargo=EXCLUDED.cargo, reg_sic=EXCLUDED.reg_sic, "
+                + "archivo_origen=EXCLUDED.archivo_origen, vigente=EXCLUDED.vigente";
+        } else {
+            sql = "MERGE INTO contratos (persona_id,it,periodo,instituto,ciudad,sub_area,cod_esp,tipo_contrato,"
+                + "tipo_trabajador,fecha_termino,horas_semanales,cargo,reg_sic,archivo_origen,vigente) "
+                + "KEY (persona_id,it,periodo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        }
+        jdbc.batchUpdate(sql, lote, tipos);
     }
 
     public void marcarNoVigente(int personaId, int it, LocalDate desde) {

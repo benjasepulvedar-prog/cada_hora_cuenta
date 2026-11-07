@@ -1,6 +1,7 @@
 package cl.teleton.planificacion.repository;
 
 import cl.teleton.planificacion.model.DashboardFilter;
+import cl.teleton.planificacion.config.DatabaseDialect;
 import cl.teleton.planificacion.util.Json;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,13 +28,17 @@ public class DashboardRepository {
             + "SUM(r.horas_disp_directa_sem) / NULLIF(SUM(r.horas_semanales), 0) AS foja ";
 
     private final JdbcTemplate jdbc;
+        private final DatabaseDialect dialect;
 
-    public DashboardRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+        public DashboardRepository(JdbcTemplate jdbc, DatabaseDialect dialect) {
+                this.jdbc = jdbc;
+                this.dialect = dialect;
+        }
 
     public boolean admiteAgrupacion(String agruparPor) { return GRUPOS.containsKey(agruparPor); }
 
     public List<Map<String, Object>> resumen(DashboardFilter filtro) {
-        String col = GRUPOS.get(filtro.agruparPor());
+        String col = filtro.agruparPor().equals("mes") ? dialect.month("r.periodo") : GRUPOS.get(filtro.agruparPor());
         Consulta consulta = filtro(filtro);
         String sql = "SELECT " + col + " AS clave, " + METRICAS + "FROM resultado_planificacion r " + consulta.where()
                 + "GROUP BY " + col + " ORDER BY " + col;
@@ -42,11 +47,12 @@ public class DashboardRepository {
 
     public Map<String, Object> nacional(DashboardFilter filtro) {
         Consulta consulta = filtro(filtro);
+        String month = dialect.month("r.periodo");
         Map<String, Object> totales = Json.camel(jdbc.queryForMap(
                 "SELECT " + METRICAS + "FROM resultado_planificacion r " + consulta.where(), consulta.args().toArray()));
         List<Map<String, Object>> porMes = Json.camel(jdbc.queryForList(
-                "SELECT MONTH(r.periodo) AS mes, " + METRICAS + "FROM resultado_planificacion r " + consulta.where()
-                        + "GROUP BY MONTH(r.periodo) ORDER BY MONTH(r.periodo)", consulta.args().toArray()));
+                "SELECT " + month + " AS mes, " + METRICAS + "FROM resultado_planificacion r " + consulta.where()
+                        + "GROUP BY " + month + " ORDER BY " + month, consulta.args().toArray()));
         return Map.of("totales", totales, "porMes", porMes);
     }
 
@@ -61,7 +67,7 @@ public class DashboardRepository {
         StringBuilder where = new StringBuilder("WHERE 1=1 ");
         List<Object> args = new ArrayList<>();
         if (f.it() != null) { where.append("AND r.it = ? "); args.add(f.it()); }
-        if (f.mes() != null) { where.append("AND MONTH(r.periodo) = ? "); args.add(f.mes()); }
+        if (f.mes() != null) { where.append("AND " + dialect.month("r.periodo") + " = ? "); args.add(f.mes()); }
         if (f.area() != null) { where.append("AND UPPER(r.sub_area) = UPPER(?) "); args.add(f.area()); }
         if (f.cargo() != null) { where.append("AND UPPER(r.cargo) = UPPER(?) "); args.add(f.cargo()); }
         if (f.codEsp() != null) { where.append("AND UPPER(r.cod_esp) = UPPER(?) "); args.add(f.codEsp()); }

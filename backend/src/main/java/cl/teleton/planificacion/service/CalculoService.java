@@ -1,6 +1,7 @@
 package cl.teleton.planificacion.service;
 
 import cl.teleton.planificacion.calculo.Formula;
+import cl.teleton.planificacion.config.DatabaseDialect;
 import cl.teleton.planificacion.model.ContratoRow;
 import cl.teleton.planificacion.repository.ContratoRepository;
 import java.sql.Date;
@@ -21,10 +22,12 @@ public class CalculoService {
 
     private final JdbcTemplate jdbc;
     private final ContratoRepository contratos;
+    private final DatabaseDialect dialect;
 
-    public CalculoService(JdbcTemplate jdbc, ContratoRepository contratos) {
+    public CalculoService(JdbcTemplate jdbc, ContratoRepository contratos, DatabaseDialect dialect) {
         this.jdbc = jdbc;
         this.contratos = contratos;
+        this.dialect = dialect;
     }
 
     private record Ctx(Map<String, Formula.Regla> reglas, Map<String, double[]> grupal, double[] semanasNac,
@@ -105,10 +108,28 @@ public class CalculoService {
                     mensual.planIndirecta(), mensual.planTotal(), mensual.metaGestion(), foja});
         }
         if (!lote.isEmpty()) {
-            jdbc.batchUpdate("MERGE INTO resultado_planificacion (persona_id,it,periodo,instituto,sub_area,cod_esp,cargo,"
-                    + "horas_semanales,tramo,horas_nas_sem,horas_disp_sem,horas_disp_directa_sem,atenc_directa_sem,"
-                    + "atenc_total_sem,semanas_mes,plan_directa,plan_indirecta,plan_total,meta_gestion,foja,calculado_en) "
-                    + "KEY (persona_id,it,periodo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)", lote);
+            String sql;
+            if (dialect.isPostgres()) {
+                sql = "INSERT INTO resultado_planificacion (persona_id,it,periodo,instituto,sub_area,cod_esp,cargo,"
+                        + "horas_semanales,tramo,horas_nas_sem,horas_disp_sem,horas_disp_directa_sem,atenc_directa_sem,"
+                        + "atenc_total_sem,semanas_mes,plan_directa,plan_indirecta,plan_total,meta_gestion,foja,calculado_en) "
+                        + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) "
+                        + "ON CONFLICT (persona_id,it,periodo) DO UPDATE SET instituto=EXCLUDED.instituto, "
+                        + "sub_area=EXCLUDED.sub_area, cod_esp=EXCLUDED.cod_esp, cargo=EXCLUDED.cargo, "
+                        + "horas_semanales=EXCLUDED.horas_semanales, tramo=EXCLUDED.tramo, "
+                        + "horas_nas_sem=EXCLUDED.horas_nas_sem, horas_disp_sem=EXCLUDED.horas_disp_sem, "
+                        + "horas_disp_directa_sem=EXCLUDED.horas_disp_directa_sem, "
+                        + "atenc_directa_sem=EXCLUDED.atenc_directa_sem, atenc_total_sem=EXCLUDED.atenc_total_sem, "
+                        + "semanas_mes=EXCLUDED.semanas_mes, plan_directa=EXCLUDED.plan_directa, "
+                        + "plan_indirecta=EXCLUDED.plan_indirecta, plan_total=EXCLUDED.plan_total, "
+                        + "meta_gestion=EXCLUDED.meta_gestion, foja=EXCLUDED.foja, calculado_en=CURRENT_TIMESTAMP";
+            } else {
+                sql = "MERGE INTO resultado_planificacion (persona_id,it,periodo,instituto,sub_area,cod_esp,cargo,"
+                        + "horas_semanales,tramo,horas_nas_sem,horas_disp_sem,horas_disp_directa_sem,atenc_directa_sem,"
+                        + "atenc_total_sem,semanas_mes,plan_directa,plan_indirecta,plan_total,meta_gestion,foja,calculado_en) "
+                        + "KEY (persona_id,it,periodo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)";
+            }
+            jdbc.batchUpdate(sql, lote);
         }
         return new int[]{lote.size(), sinRegla};
     }
